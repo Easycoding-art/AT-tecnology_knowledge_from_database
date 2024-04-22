@@ -1,0 +1,6 @@
+WITH profit AS (
+SELECT advert, SUM(price) FROM purchase
+GROUP BY advert)
+SELECT seller, "sum" FROM profit JOIN advert ON profit.advert = advert.id_advert
+ORDER BY "sum" DESC
+LIMIT 10
