@@ -50,9 +50,10 @@ def parse_database(file_path, name, password, types, class_parameter, train_perc
     df, aliases = normalize_data(file_path, name, password, types)
     train, test = create_dataset(df, class_parameter, train_percent, time_parameter)
     return train, test, aliases
-
+'''
 df, arr = normalize_data('query.txt', 'avito3', '1234', 'int64')
 print(df)
 x, y, x_test, y_test = create_dataset(df, 'sum', 10)
 print(x)
 print(x_test)
+'''

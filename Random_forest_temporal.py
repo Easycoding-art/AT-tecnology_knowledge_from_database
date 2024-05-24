@@ -8,12 +8,13 @@ from sklearn.metrics import classification_report
 import graphviz
 
 class Node:
-    def __init__(self, feature_idx=None, threshold=None, left=None, right=None, value=None):
+    def __init__(self, feature_idx=None, threshold=None, time=None, left=None, right=None, value=None):
         self.feature_idx = feature_idx# индекс признака, по которому разбивается вершина
         self.threshold = threshold#пороговое значение, по которому разбивается вершина
         self.left = left# левое поддерево
         self.right = right# правое поддерево
         self.value = value# значение в листовой вершине
+        self.time = time#временная метка
 
 class DecisionTree:
     def __init__(self, min_samples_split=2, max_depth=100, n_feats=None):
@@ -22,11 +23,11 @@ class DecisionTree:
         self.n_feats = n_feats# количество признаков, используемых для разделения вершин
         self.root = None
 
-    def fit(self, X, y):
+    def fit(self, X, y, t):
         self.n_feats = X.shape[1] if not self.n_feats else min(self.n_feats, X.shape[1])
-        self.root = self._grow_tree(X, y)
+        self.root = self._grow_tree(X, y, t)
 
-    def _grow_tree(self, X, y, depth=0):
+    def _grow_tree(self, X, y, t,depth=0):
         n_samples, n_features = X.shape
         n_labels = len(np.unique(y))
         # Проверяем условие остановки рекурсии
@@ -35,15 +36,15 @@ class DecisionTree:
             return Node(value=leaf_value)
         feat_idxs = np.random.choice(n_features, self.n_feats, replace=False)
         # Ищем лучшее разделение признака
-        best_feat, best_thresh = self._best_criteria(X, y, feat_idxs)
+        best_feat, best_thresh, time = self._best_criteria(X, y, t, feat_idxs)
         # Разделяем данные и делаем рекурсивный вызов для левого и правого поддеревьев
         left_idxs, right_idxs = self._split(X[:, best_feat], best_thresh)
-        left = self._grow_tree(X[left_idxs, :], y[left_idxs], depth+1)
-        right = self._grow_tree(X[right_idxs, :], y[right_idxs], depth+1)
+        left = self._grow_tree(X[left_idxs, :], y[left_idxs], t[left_idxs], depth+1)
+        right = self._grow_tree(X[right_idxs, :], y[right_idxs], t[right_idxs], depth+1)
         # Возвращаем новую вершину дерева
-        return Node(best_feat, best_thresh, left, right)
+        return Node(best_feat, best_thresh, time, left, right)
 
-    def _best_criteria(self, X, y, feat_idxs):
+    def _best_criteria(self, X, y, t, feat_idxs):
         best_gain = -1
         split_idx, split_thresh = None, None
         for feat_idx in feat_idxs:
@@ -55,7 +56,8 @@ class DecisionTree:
                     best_gain = gain
                     split_idx = feat_idx
                     split_thresh = threshold
-        return split_idx, split_thresh
+                    split_time = t[X_column.tolist().index(threshold)]
+        return split_idx, split_thresh, split_time
 
     def _information_gain(self, y, X_column, split_thresh):
         # Вычисляем энтропию перед разбиением
@@ -115,7 +117,7 @@ class DecisionTree:
             if node.value is not None:
                 label = str(node.value)
             else:
-                label = "X[" + str(node.feature_idx) + "] <= " + str(node.threshold)
+                label = f'time = {node.time}, X[{node.feature_idx}] <= {str(node.threshold)}'
 
             # Добавляем узел в объект `Digraph`
             dot.node(str(id(node)), label)
@@ -144,16 +146,16 @@ class RandomForestClassifier:
         self.random_state = random_state      # случайное начальное состояние для генератора случайных чисел
         self.estimators = []                  # список для хранения деревьев
     
-    def fit(self, X, y):
+    def fit(self, X, y, t):
         # Метод для обучения модели на тренировочных данных X и метках y
         rng = np.random.default_rng(self.random_state)  # инициализация генератора случайных чисел
         for i in range(self.n_estimators):
             # Использование Bootstrap Aggregating для случайного выбора объектов для текущего дерева
             idxs = rng.choice(X.shape[0], X.shape[0])
-            X_subset, y_subset = X[idxs], y[idxs]
+            X_subset, y_subset, t_subset = X[idxs], y[idxs], t[idxs]
             # Создание и обучение дерева решений с заданными параметрами
             clf = DecisionTree(max_depth=self.max_depth)
-            clf.fit(X_subset, y_subset)
+            clf.fit(X_subset, y_subset, t_subset)
             self.estimators.append(clf)  # Добавление обученного дерева в список
     
     def predict(self, X):
@@ -170,13 +172,16 @@ class RandomForestClassifier:
             y_pred.append(max(votes, key=votes.get))  # Выбор метки с наибольшим количеством голосов
         return np.array(y_pred)  # Возвращение предсказанных меток в виде массива numpy
 
-
+'''
 #Далее обучим и оценим точность нашего алгоритма:
 # Генерируем данные для обучения
 X, y = make_classification(n_samples=1000, n_features=2, n_redundant=0, n_informative=2,
                            random_state=1, n_clusters_per_class=1)
 clf = RandomForestClassifier(n_estimators=100, max_depth=3)
+print(X)
+print(y)
 clf.fit(X, y)
 # Прогнозируем метки классов 
 y_pred = clf.predict(X)
 print(classification_report(y, y_pred))
+'''

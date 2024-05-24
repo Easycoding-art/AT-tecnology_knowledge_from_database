@@ -16,4 +16,3 @@ def create_dataset() :
     df['time'] = df['date'].apply(lambda x: times.get(x))
     df.drop(['date','quarter','day', 'actual_productivity'], axis=1 , inplace=True)
     return df
-print(create_dataset())
